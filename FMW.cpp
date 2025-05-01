@@ -71,7 +71,7 @@ void FMW::Sound::play() {
         CCLOG("FMOD play error! (%d) %s", result, FMOD_ErrorString(result));
 
     }
-    initDSPFFT(m_fmSystem);
+    if (!m_isDSPFFTinitialised) initDSPFFT(m_fmSystem);
 }
 
 void FMW::Sound::stop() {
