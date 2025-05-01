@@ -33,5 +33,5 @@ void AppDelegate::applicationWillEnterForeground()
 
 ## Create sound with FMW::AudioPlayer:
 ```
-FMW::Sound* sound = FMW::AudioPlayer::getInstance()->createSound(FMOD_SOUND_PATH("music.mp3"));
+FMW::Sound* sound = FMW::AudioPlayer::getInstance()->createSound("music.mp3");
 ```
