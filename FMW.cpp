@@ -38,7 +38,12 @@ FMW::Sound* FMW::AudioPlayer::createSound(std::string songPath, FMOD_MODE fmMode
     if (fmResult != FMOD_OK) {
         CCLOG("FMOD sound load error! (%d) %s", fmResult, FMOD_ErrorString(fmResult));
         AX_SAFE_DELETE(fmwSound);
+        return nullptr;
     }
+#ifdef FMW_DEBUG_ENABLED
+    CCLOG("FMW::AudioPlayer::createSound: sound created successfully! ID = %d;", m_idCounter);
+#endif // FMW_DEBUG_ENABLED
+
     fmwSound->m_fmSystem = m_fmSystem;
     fmwSound->m_id = m_idCounter;
     m_idCounter++;
@@ -62,7 +67,7 @@ void FMW::AudioPlayer::update() {
 }
 
 FMW::Sound::Sound() {
-    m_userPaused = m_enginePaused = m_isDSPFFTinitialised = false;
+    m_userPaused = m_enginePaused = m_isDSPFFTinitialised = m_loopEnabled = false;
 }
 
 void FMW::Sound::play() {
@@ -158,7 +163,7 @@ void FMW::Sound::initDSPFFT(FMOD::System* system) {
     if (successInit) m_isDSPFFTinitialised = true;
 }
 
-std::vector<float> FMW::Sound::getFFTSpectrum(unsigned int channel) {
+std::vector<float> FMW::Sound::getFFTSpectrum(SpectrumChannel channel) {
     FMOD::DSP* fft = m_fmDSPFFT;
     std::vector<float> spectrum = {};
     if (fft && m_isDSPFFTinitialised)
@@ -167,14 +172,25 @@ std::vector<float> FMW::Sound::getFFTSpectrum(unsigned int channel) {
         FMOD_RESULT result = fft->getParameterData(FMOD_DSP_FFT_SPECTRUMDATA, (void**)&fftData, nullptr, nullptr, 0);
         if (result == FMOD_OK && fftData && fftData->length > 0)
         {
-            unsigned int binCount = fftData->length;
-            unsigned int maxChannelIndex = 31;
-            if (channel > maxChannelIndex) channel = maxChannelIndex;
+            unsigned short binCount = fftData->length;
+            unsigned short maxChannelIndex = fftData->numchannels - 1;
+
+#ifdef FMW_DEBUG_ENABLED
+            //CCLOG("FMW::Sound::getFFTSpectrum: requested channel = %d; max channels = %d", channel, maxChannelIndex + 1);
+#endif
 
             for (int i = 0; i < binCount; ++i)
             {
-                float magnitude = fftData->spectrum[channel][i];
-                spectrum.push_back(magnitude);
+                float leftMagnitude = fftData->spectrum[0][i];
+                float rightMagnitude = fftData->spectrum[1][i];
+                float stereoMagnitude = leftMagnitude + rightMagnitude / 2.f;
+
+                if (channel == SpectrumChannel::kMonoLeft)
+                    spectrum.push_back(leftMagnitude);
+                else if (channel == SpectrumChannel::kMonoRight)
+                    spectrum.push_back(rightMagnitude);
+                else if (channel == SpectrumChannel::kStereo)
+                    spectrum.push_back(stereoMagnitude);
             }
         }
     }
@@ -182,7 +198,7 @@ std::vector<float> FMW::Sound::getFFTSpectrum(unsigned int channel) {
     return spectrum;
 }
 
-float FMW::Sound::getAverageSpectrumAmplitude(unsigned int channel) {
+float FMW::Sound::getAverageSpectrumAmplitude(SpectrumChannel channel) {
     std::vector<float> spectrum = getFFTSpectrum(channel);
     if (!spectrum.empty())
     {
