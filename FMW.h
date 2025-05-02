@@ -9,8 +9,11 @@
 // FMOD Wrapper (FMW)
 
 #define FMOD_SOUND_PATH(__PATH__) FMW::AudioPlayer::getInstance()->fmodSoundPath(__PATH__).c_str()
+//#define FMW_DEBUG_ENABLED 1
 
 namespace FMW {
+    enum class SpectrumChannel { kMonoLeft, kMonoRight, kStereo };
+
     class AudioPlayer;
 
     class Sound {
@@ -23,6 +26,7 @@ namespace FMW {
         bool m_userPaused;
         bool m_enginePaused; // force pause
         bool m_isDSPFFTinitialised;
+        bool m_loopEnabled;
         int  m_id;
         void setEnginePaused(bool value);
         void update();
@@ -43,8 +47,8 @@ namespace FMW {
         float getVolume() { float volume = 0.f; m_fmChannel->getVolume(&volume); return volume; }
         void setPitch(float value) { m_fmChannel->setPitch(value); }
         float getPitch() { float pitch; m_fmChannel->getPitch(&pitch); return pitch; }
-        std::vector<float> getFFTSpectrum(unsigned int channel = 0);
-        float getAverageSpectrumAmplitude(unsigned int channel = 0);
+        std::vector<float> getFFTSpectrum(SpectrumChannel channel = SpectrumChannel::kStereo);
+        float getAverageSpectrumAmplitude(SpectrumChannel channel = SpectrumChannel::kStereo);
         void setCurrentTime(float timeInSeconds) {
             unsigned int ms = timeInSeconds * 1000.f;
             m_fmChannel->setPosition(ms, FMOD_TIMEUNIT_MS);
@@ -54,7 +58,20 @@ namespace FMW {
             m_fmChannel->getPosition(&ms, FMOD_TIMEUNIT_MS);
             return (float)ms / 1000.f;
         }
-
+        void setLoopEnabled(bool value) {
+            m_loopEnabled = value;
+            if (value)
+            {
+                m_fmChannel->setMode(FMOD_LOOP_NORMAL);
+                m_fmChannel->setLoopCount(-1);
+            }
+            else
+            {
+                m_fmChannel->setMode(FMOD_LOOP_OFF);
+                m_fmChannel->setLoopCount(1);
+            }
+        }
+        bool isLoopEnabled() { return m_loopEnabled; }
         friend class AudioPlayer;
     };
 
