@@ -5,18 +5,12 @@ FMW (FMOD wrapper) my audio player wrapper, compatible with cocos2d-x v4.x / axm
 ```
 FMW::AudioPlayer::getInstance()->update();
 ```
-Or add the following piece of code inside AppDelegate.cpp to move the update to a separate thread:
+Or add the following piece of code inside AppDelegate.cpp:
 ```
 // FMOD update
-std::thread thread([&]() {
-    while (cocos2d::Director::getInstance()->getGLView() && !cocos2d::Director::getInstance()->isPaused())
-    {
-        Director::getInstance()->getScheduler()->performFunctionInCocosThread([&]() -> void {
-            FMW::AudioPlayer::getInstance()->update();
-        });
-    }
-    });
-thread.detach();
+Director::getInstance()->getScheduler()->schedule([&](float dt){
+    FMW::AudioPlayer::getInstance()->update();
+}, this, 0, false, "FMW_Update");
 ```
 
 ## and in AppDelegate.cpp:
