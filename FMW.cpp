@@ -74,9 +74,16 @@ void FMW::Sound::play() {
     FMOD_RESULT result = m_fmSystem->playSound(m_fmSound, nullptr, false, &m_fmChannel);
     if (result != FMOD_OK) {
         CCLOG("FMOD play error! (%d) %s", result, FMOD_ErrorString(result));
-
+        return;
     }
-    if (!m_isDSPFFTinitialised) initDSPFFT(m_fmSystem);
+
+    // подключение DSP к новому каналу если тот был уже инициализирован
+    if (!m_isDSPFFTinitialised) {
+        initDSPFFT(m_fmSystem);
+    }
+    else {
+        m_fmChannel->addDSP(0, m_fmDSPFFT);
+    }
 }
 
 void FMW::Sound::stop() {
@@ -139,11 +146,12 @@ void FMW::AudioPlayer::forceResumeAll() {
 }
 
 void FMW::Sound::initDSPFFT(FMOD::System* system) {
+    if (m_isDSPFFTinitialised)  return;
     bool successInit = true;
     FMOD_RESULT result = system->createDSPByType(FMOD_DSP_TYPE_FFT, &m_fmDSPFFT);
 
     if (result == FMOD_OK) {
-        
+
         result = system->createDSPByType(FMOD_DSP_TYPE_FFT, &m_fmDSPFFT);
         if (result == FMOD_OK)
         {
